@@ -173,8 +173,19 @@ Possible extensions include:
 
 ---
 
+## Workflow Overview
+
+![Workflow](screenshots/workflow-overview.png)
+
+## Example Results
+
+![Results](screenshots/results-email.png)
+
+
+## Purpose
+This repository is intended as a **demonstration of automation architecture and AI-powered document processing using n8n**.
+
+It is intended as a portfolio example for automation and backend integration work.
+
 ## Notes
-
-This repository is intended as a **demonstration of automation architecture and AI-assisted document processing using n8n**.
-
 Credentials and API keys must be configured locally after importing the workflow.
