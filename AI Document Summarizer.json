@@ -1,0 +1,664 @@
+{
+  "name": "AI Document Summarizer",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -144,
+        -112
+      ],
+      "id": "53709ecf-8e86-44aa-a511-4460ae17dfab",
+      "name": "When clicking ‘Execute workflow’"
+    },
+    {
+      "parameters": {
+        "fileSelector": "={{ $json.source_paths[$json.source_type] }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1.1,
+      "position": [
+        112,
+        96
+      ],
+      "id": "87c2e1ff-37ac-4859-9f93-73171330b802",
+      "name": "Read/Write Files from Disk"
+    },
+    {
+      "parameters": {
+        "chunkSize": 2000,
+        "options": {
+          "summarizationMethodAndPrompts": {
+            "values": {
+              "prompt": "=\nWrite a concise summary of the following into at most 5 brief bullet points. Use the output format:\nFile: {{$json.file_name}}\nSUMMARY: summary\n\n\"{text}\"\n\n\n"
+            }
+          },
+          "batching": {
+            "batchSize": 3,
+            "delayBetweenBatches": 2
+          }
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainSummarization",
+      "typeVersion": 2.1,
+      "position": [
+        784,
+        96
+      ],
+      "id": "d6cfd7d5-f07c-4570-92b6-c2514a132c61",
+      "name": "Summarization Chain",
+      "alwaysOutputData": false
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "gpt-5-nano",
+          "mode": "list",
+          "cachedResultName": "gpt-5-nano"
+        },
+        "builtInTools": {},
+        "options": {
+          "reasoningEffort": "low"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [
+        784,
+        272
+      ],
+      "id": "0fd29353-4093-4b96-a893-653022fbc515",
+      "name": "OpenAI Chat Model",
+      "credentials": {
+        "openAiApi": {
+          "id": "oQS5qadJbobRCyy2",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "text",
+        "destinationKey": "output_data",
+        "options": {
+          "keepSource": "json"
+        }
+      },
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1.1,
+      "position": [
+        400,
+        176
+      ],
+      "id": "301f9e14-aecc-4939-b6e0-a39125a45bd6",
+      "name": "Extract from File"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "40a8397d-de99-4187-b983-e436acf3d54d",
+              "name": "debug_mode",
+              "value": false,
+              "type": "boolean"
+            },
+            {
+              "id": "df5e2be3-1ef8-4aec-a412-8d320aa57ecc",
+              "name": "source_type",
+              "value": "gdrive",
+              "type": "string"
+            },
+            {
+              "id": "74982780-d1e8-4245-ad51-db58e66e3848",
+              "name": "source_paths",
+              "value": "={{ { local: \"/home/node/.n8n-files/incoming/*.txt\", gdrive: \"'1Yp4j8_8apUz6boGbFtt13u1PCBYR6Zdd' in parents and mimeType='text/plain' and trashed=false\" } }}",
+              "type": "object"
+            },
+            {
+              "id": "88b5b9c5-3f75-4e4d-850b-f001a216e04a",
+              "name": "from_email",
+              "value": "notifications@kellenrhys-consulting.com",
+              "type": "string"
+            },
+            {
+              "id": "c5eb54d6-fb2b-4a9d-921a-85af17883128",
+              "name": "to_email",
+              "value": "kellenrhys.consulting@gmail.com",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        64,
+        -112
+      ],
+      "id": "0f640979-40cd-41be-86f7-cd740ca20362",
+      "name": "Configuration (Set)"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "ffcecc4b-3ae9-4fa7-b4f3-76b8b69099ad",
+              "name": "fileName",
+              "value": "={{ $json.output.text.match(/File:\\s*(.*)/)[1] }}",
+              "type": "string"
+            },
+            {
+              "id": "55db59e0-16c2-4756-8924-5fc895b50db0",
+              "name": "bullets",
+              "value": "={{ $json.output.text.split(\"SUMMARY:\")[1].trim().split(\"\\n\").map((e) => e.replace(/^\\s*\\-\\s*/, '')) }}",
+              "type": "array"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1184,
+        -96
+      ],
+      "id": "e8e5d6fe-1833-4538-bf50-aa35b7532ff5",
+      "name": "Extract Bullets (Set)"
+    },
+    {
+      "parameters": {
+        "html": "<h2>AI Article Summary Report</h2>\n\n{{$json.data.map(item => `\n<h3>${item.fileName}</h3>\n<ul>\n${item.bullets.map(b => `<li>${b.trim()}</li>`).join(\"\")}\n</ul>\n`).join(\"\")}}"
+      },
+      "type": "n8n-nodes-base.html",
+      "typeVersion": 1.2,
+      "position": [
+        1184,
+        112
+      ],
+      "id": "4a575292-c583-4149-877a-822a260ed86b",
+      "name": "Build HTML Email"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "80e74803-67c6-45a5-b4b3-1164e8fd960c",
+              "leftValue": "={{ $('Configuration (Set)').item.json.debug_mode }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        1168,
+        336
+      ],
+      "id": "d3542b98-d419-4d1c-b460-73c6718e3131",
+      "name": "If debug_mode"
+    },
+    {
+      "parameters": {
+        "fromEmail": "={{ $('Configuration (Set)').item.json.from_email }}",
+        "toEmail": "={{ $('Configuration (Set)').item.json.to_email }}",
+        "subject": "AI Article Summary Report",
+        "html": "={{ $json.html }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        1168,
+        560
+      ],
+      "id": "55171fd4-c5b7-4eea-b1dd-f60ab6eccedb",
+      "name": "Email Summary",
+      "webhookId": "22a4cb8a-5655-4fe6-aa5b-c9bf4ba9ab84",
+      "alwaysOutputData": false,
+      "credentials": {
+        "smtp": {
+          "id": "zp7tqi6FiCq6mABo",
+          "name": "SMTP account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "3d45a453-4822-4950-a7cc-0e025dddc7bd",
+              "name": "files_found",
+              "value": "={{ $if( $('Read/Write Files from Disk').isExecuted, $items('Read/Write Files from Disk').length || 0, $items('Download file').length || 0) }}",
+              "type": "number"
+            },
+            {
+              "id": "cc26d640-d722-4947-928e-e6dec73218fa",
+              "name": "summaries_completed",
+              "value": "={{ $items('Summarization Chain').length }}",
+              "type": "number"
+            },
+            {
+              "id": "1593fcd1-00bc-4914-96be-7cbbc5d764f7",
+              "name": "Generated",
+              "value": "={{ $now }}",
+              "type": "string"
+            },
+            {
+              "id": "60037812-4328-4314-90dd-eab572c05cf2",
+              "name": "emails_sent",
+              "value": "={{ $if(!$('Configuration (Set)').item.json.debug_mode && $items('Email Summary').length > 0, $json.accepted?.length ?? 0, 0) }}",
+              "type": "number"
+            },
+            {
+              "id": "2d2fd892-0ee5-4cac-bb5b-7e1dec2f0a8f",
+              "name": "smtp_response",
+              "value": "={{ $json.response || '' }}",
+              "type": "string"
+            },
+            {
+              "id": "fe16a312-2fd3-4e79-bea1-328117551d57",
+              "name": "debug_mode",
+              "value": "={{ $('Configuration (Set)').item.json.debug_mode }}",
+              "type": "boolean"
+            },
+            {
+              "id": "ae41de74-2093-412e-b094-711fba38b124",
+              "name": "source_type",
+              "value": "={{ $('Configuration (Set)').item.json.source_type }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1504,
+        432
+      ],
+      "id": "6004d95b-d3c2-47f2-a057-41046067c025",
+      "name": "Results Report (Set)"
+    },
+    {
+      "parameters": {
+        "aggregate": "aggregateAllItemData",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [
+        1392,
+        -96
+      ],
+      "id": "c3eb2475-6c8a-420f-a091-801573e63ac9",
+      "name": "Aggregate"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.source_type }}",
+                    "rightValue": "local",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "6b824f23-d910-42f8-bda1-5e5a4a827a92"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "local"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "74f2d145-4608-47ce-884c-81f348f50088",
+                    "leftValue": "={{ $json.source_type }}",
+                    "rightValue": "gdrive",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "gdrive"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        -128,
+        272
+      ],
+      "id": "a8fb4b41-0430-49ce-9ed3-797bf2d98ba7",
+      "name": "Route Source Type (Switch)"
+    },
+    {
+      "parameters": {
+        "resource": "fileFolder",
+        "searchMethod": "query",
+        "queryString": "={{ $('Configuration (Set)').item.json.source_paths[$('Configuration (Set)').item.json.source_type] }}",
+        "returnAll": true,
+        "filter": {},
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        32,
+        288
+      ],
+      "id": "cf53e91e-e13d-4a8b-aa03-58acd0bdca70",
+      "name": "Search files and folders",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "WL0vQI6sPFyuAtjt",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "download",
+        "fileId": {
+          "__rl": true,
+          "value": "={{ $json.id }}",
+          "mode": "id"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        192,
+        288
+      ],
+      "id": "67bc6cc0-d614-47be-ab44-0d6d89873d61",
+      "name": "Download file",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "WL0vQI6sPFyuAtjt",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "b0623806-c5e4-4ea7-9703-183d3f68d062",
+              "name": "file_name",
+              "value": "={{ $json.name || $json.fileName || '' }}",
+              "type": "string"
+            },
+            {
+              "id": "6643b5fd-123d-4171-96de-fac0978cdf95",
+              "name": "provider_file_id",
+              "value": "={{ $json.id || '' }}",
+              "type": "string"
+            },
+            {
+              "id": "a298f21a-1926-44d6-8fe7-1245e1299153",
+              "name": "output_data",
+              "value": "={{ $json.output_data }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        608,
+        176
+      ],
+      "id": "7e05d702-6f31-409c-a388-1e63dfa066da",
+      "name": "Normalize Fields"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When clicking ‘Execute workflow’": {
+      "main": [
+        [
+          {
+            "node": "Configuration (Set)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read/Write Files from Disk": {
+      "main": [
+        [
+          {
+            "node": "Extract from File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Summarization Chain",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Summarization Chain": {
+      "main": [
+        [
+          {
+            "node": "Extract Bullets (Set)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract from File": {
+      "main": [
+        [
+          {
+            "node": "Normalize Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Configuration (Set)": {
+      "main": [
+        [
+          {
+            "node": "Route Source Type (Switch)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Bullets (Set)": {
+      "main": [
+        [
+          {
+            "node": "Aggregate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build HTML Email": {
+      "main": [
+        [
+          {
+            "node": "If debug_mode",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If debug_mode": {
+      "main": [
+        [
+          {
+            "node": "Results Report (Set)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Email Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Email Summary": {
+      "main": [
+        [
+          {
+            "node": "Results Report (Set)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aggregate": {
+      "main": [
+        [
+          {
+            "node": "Build HTML Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route Source Type (Switch)": {
+      "main": [
+        [
+          {
+            "node": "Read/Write Files from Disk",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Search files and folders",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Search files and folders": {
+      "main": [
+        [
+          {
+            "node": "Download file",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download file": {
+      "main": [
+        [
+          {
+            "node": "Extract from File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Fields": {
+      "main": [
+        [
+          {
+            "node": "Summarization Chain",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "291d5044-0bb0-4b14-b7e5-62afc8096ca9",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "f27e84b43c73e250a47c125c6148d62138dabfade1158a4ea76b1eec53fdc021"
+  },
+  "id": "IRSsO3JYZ29CFjOa",
+  "tags": []
+}
